@@ -107,7 +107,7 @@ export default function Home() {
 
   return (
     <main className="h-[200vh] w-full bg-black">
-      <Canvas camera={{ position: [0, 0, 7], fov: 35 }}>
+      <Canvas camera={{ position: [0, 0, 10], fov: 35 }}>
         <color attach="background" args={['#050505']} />
 
         <ambientLight intensity={0.5} />
