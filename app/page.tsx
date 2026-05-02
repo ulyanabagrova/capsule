@@ -44,7 +44,6 @@ function Model({ scroll }: { scroll: number }) {
           })
         }
 
-        // 🟡 крышка
         if (name.includes('lid')) {
           lidRef.current = mesh
         }
@@ -52,18 +51,17 @@ function Model({ scroll }: { scroll: number }) {
     })
   }, [scene])
 
-  // фиксируем стартовую позицию ПОСЛЕ монтирования
+  // фиксируем старт крышки
   useEffect(() => {
     if (lidRef.current) {
       lidStartY.current = lidRef.current.position.y
     }
   }, [])
 
-  useFrame((state) => {
-    if (modelRef.current) {
-      modelRef.current.rotation.y += 0.005
-    }
+  useFrame(() => {
+    // 🚫 МОДЕЛЬ НЕ ДВИГАЕМ ВООБЩЕ
 
+    // 🟡 двигаем ТОЛЬКО крышку
     if (lidRef.current) {
       const openDistance = 2
 
@@ -73,7 +71,7 @@ function Model({ scroll }: { scroll: number }) {
       lidRef.current.position.y = THREE.MathUtils.lerp(
         lidRef.current.position.y,
         targetY,
-        0.1
+        0.15
       )
     }
   })
@@ -105,7 +103,13 @@ export default function Home() {
 
   return (
     <main className="h-[200vh] w-full bg-black">
-      <Canvas camera={{ position: [0, 0, 7], fov: 35 }} dpr={[1, 2]}>
+      <Canvas
+        camera={{
+          position: [0, 0, 7], // 📌 фикс камеры
+          fov: 35,
+        }}
+        dpr={[1, 2]}
+      >
         <color attach="background" args={['#050505']} />
 
         <ambientLight intensity={0.5} />
@@ -114,7 +118,9 @@ export default function Home() {
 
         <Suspense fallback={null}>
           <Model scroll={scrollRef.current} />
+
           <Environment preset="city" />
+
           <ContactShadows
             position={[0, -1.5, 0]}
             opacity={0.6}
@@ -123,7 +129,12 @@ export default function Home() {
           />
         </Suspense>
 
-        <OrbitControls makeDefault />
+        {/* 🚫 ВАЖНО: OrbitControls ограничиваем */}
+        <OrbitControls
+          enableZoom={false}
+          enablePan={false}
+          enableRotate={false}
+        />
       </Canvas>
     </main>
   )
