@@ -23,6 +23,7 @@ function Model({ scroll }: { scroll: number }) {
         const mesh = child as THREE.Mesh
         const name = mesh.name.toLowerCase()
 
+        // 🫧 стекло
         if (name.includes('capsule')) {
           mesh.material = new THREE.MeshPhysicalMaterial({
             transmission: 1,
@@ -35,6 +36,7 @@ function Model({ scroll }: { scroll: number }) {
           })
         }
 
+        // 🔥 жидкость
         if (name.includes('liquid')) {
           mesh.material = new THREE.MeshStandardMaterial({
             color: '#ff7b00',
@@ -44,6 +46,7 @@ function Model({ scroll }: { scroll: number }) {
           })
         }
 
+        // 🟡 крышка
         if (name.includes('lid')) {
           lidRef.current = mesh
         }
@@ -51,7 +54,6 @@ function Model({ scroll }: { scroll: number }) {
     })
   }, [scene])
 
-  // фиксируем старт крышки
   useEffect(() => {
     if (lidRef.current) {
       lidStartY.current = lidRef.current.position.y
@@ -59,9 +61,12 @@ function Model({ scroll }: { scroll: number }) {
   }, [])
 
   useFrame(() => {
-    // 🚫 МОДЕЛЬ НЕ ДВИГАЕМ ВООБЩЕ
+    // 🔄 вращение всей модели
+    if (modelRef.current) {
+      modelRef.current.rotation.y += 0.005
+    }
 
-    // 🟡 двигаем ТОЛЬКО крышку
+    // 📦 крышка поднимается от скролла
     if (lidRef.current) {
       const openDistance = 2
 
@@ -71,7 +76,7 @@ function Model({ scroll }: { scroll: number }) {
       lidRef.current.position.y = THREE.MathUtils.lerp(
         lidRef.current.position.y,
         targetY,
-        0.15
+        0.12
       )
     }
   })
@@ -103,13 +108,7 @@ export default function Home() {
 
   return (
     <main className="h-[200vh] w-full bg-black">
-      <Canvas
-        camera={{
-          position: [0, 0, 7], // 📌 фикс камеры
-          fov: 35,
-        }}
-        dpr={[1, 2]}
-      >
+      <Canvas camera={{ position: [0, 0, 7], fov: 35 }} dpr={[1, 2]}>
         <color attach="background" args={['#050505']} />
 
         <ambientLight intensity={0.5} />
@@ -129,7 +128,7 @@ export default function Home() {
           />
         </Suspense>
 
-        {/* 🚫 ВАЖНО: OrbitControls ограничиваем */}
+        {/* фиксируем камеру */}
         <OrbitControls
           enableZoom={false}
           enablePan={false}
