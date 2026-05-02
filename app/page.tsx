@@ -1,6 +1,6 @@
 'use client'
 
-import React, { Suspense, useMemo, useRef, useEffect } from 'react'
+import React, { Suspense, useMemo, useRef, useEffect, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import {
   OrbitControls,
@@ -23,7 +23,6 @@ function Model({ scroll }: { scroll: number }) {
         const mesh = child as THREE.Mesh
         const name = mesh.name.toLowerCase()
 
-        // 🫧 стекло
         if (name.includes('capsule')) {
           mesh.material = new THREE.MeshPhysicalMaterial({
             transmission: 1,
@@ -36,17 +35,14 @@ function Model({ scroll }: { scroll: number }) {
           })
         }
 
-        // 🔥 жидкость
         if (name.includes('liquid')) {
           mesh.material = new THREE.MeshStandardMaterial({
             color: '#ff7b00',
             emissive: '#ff3c00',
             emissiveIntensity: 2.5,
-            roughness: 0.1,
           })
         }
 
-        // 🟡 крышка
         if (name.includes('lid')) {
           lidRef.current = mesh
         }
@@ -61,14 +57,14 @@ function Model({ scroll }: { scroll: number }) {
   }, [])
 
   useFrame(() => {
-    // 🔄 вращение всей модели
+    // 🔄 вращение модели
     if (modelRef.current) {
       modelRef.current.rotation.y += 0.005
     }
 
-    // 📦 крышка поднимается от скролла
+    // 🟡 КРЫШКА ОТ СКРОЛЛА (ВАЖНОЕ ИЗМЕНЕНИЕ)
     if (lidRef.current) {
-      const openDistance = 2
+      const openDistance = 4 // 👈 УВЕЛИЧИЛИ ДИАПАЗОН
 
       const targetY =
         lidStartY.current + scroll * openDistance
@@ -76,7 +72,7 @@ function Model({ scroll }: { scroll: number }) {
       lidRef.current.position.y = THREE.MathUtils.lerp(
         lidRef.current.position.y,
         targetY,
-        0.12
+        0.15
       )
     }
   })
@@ -92,14 +88,17 @@ function Model({ scroll }: { scroll: number }) {
 }
 
 export default function Home() {
-  const scrollRef = useRef(0)
+  const [scroll, setScroll] = useState(0)
 
   useEffect(() => {
     const handleScroll = () => {
       const max =
         document.body.scrollHeight - window.innerHeight
 
-      scrollRef.current = window.scrollY / max
+      const progress = window.scrollY / max
+
+      // 🔥 НОРМАЛИЗАЦИЯ 0 → 1
+      setScroll(Math.min(1, Math.max(0, progress)))
     }
 
     window.addEventListener('scroll', handleScroll)
@@ -116,7 +115,7 @@ export default function Home() {
         <spotLight position={[-10, 10, 10]} intensity={3} />
 
         <Suspense fallback={null}>
-          <Model scroll={scrollRef.current} />
+          <Model scroll={scroll} />
 
           <Environment preset="city" />
 
@@ -128,7 +127,6 @@ export default function Home() {
           />
         </Suspense>
 
-        {/* фиксируем камеру */}
         <OrbitControls
           enableZoom={false}
           enablePan={false}
