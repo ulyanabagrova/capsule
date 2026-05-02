@@ -8,7 +8,6 @@ function Model({ scrollProgress }: { scrollProgress: number }) {
   const { scene } = useGLTF('/model.glb')
   const lidRef = useRef<THREE.Object3D | null>(null)
 
-  // ищем Lid
   useEffect(() => {
     scene.traverse((child) => {
       if (child.name.toLowerCase().includes('lid')) {
@@ -18,9 +17,8 @@ function Model({ scrollProgress }: { scrollProgress: number }) {
   }, [scene])
 
   useFrame(() => {
-    // Поднятие крышки ТОЛЬКО от скролла
     if (lidRef.current) {
-      const targetY = scrollProgress * 2 // регулируй высоту
+      const targetY = scrollProgress * 2
       lidRef.current.position.y = THREE.MathUtils.lerp(
         lidRef.current.position.y,
         targetY,
@@ -29,21 +27,21 @@ function Model({ scrollProgress }: { scrollProgress: number }) {
     }
   })
 
-  return <primitive object={scene} scale={2} position={[0, -1, 0]} />
+  // ⬆️ ВАЖНО: поднимаем модель вверх
+  return <primitive object={scene} scale={2} position={[0, 1.2, 0]} />
 }
 
 function CameraController({ scrollProgress }: { scrollProgress: number }) {
   useFrame((state) => {
-    const radius = 10 // ДАЛЬШЕ от объекта (было 7)
-    
-    // Камера вращается от скролла
+    const radius = 10
     const angle = scrollProgress * Math.PI * 2
 
     state.camera.position.x = Math.sin(angle) * radius
     state.camera.position.z = Math.cos(angle) * radius
-    state.camera.position.y = 2.5
+    state.camera.position.y = 3
 
-    state.camera.lookAt(0, 0, 0)
+    // ⬆️ Смотрим чуть выше центра
+    state.camera.lookAt(0, 1, 0)
   })
 
   return null
@@ -56,8 +54,8 @@ export default function Home() {
     const handleScroll = () => {
       const scrollTop = window.scrollY
       const height = document.body.scrollHeight - window.innerHeight
-
       const progress = height > 0 ? scrollTop / height : 0
+
       setScrollProgress(progress)
     }
 
@@ -72,7 +70,7 @@ export default function Home() {
 
   return (
     <main className="h-[200vh] w-full bg-black">
-      <Canvas camera={{ position: [0, 2, 10], fov: 40 }} dpr={[1, 2]}>
+      <Canvas camera={{ position: [0, 3, 10], fov: 40 }} dpr={[1, 2]}>
         <color attach="background" args={['#050505']} />
 
         <ambientLight intensity={0.5} />
@@ -83,7 +81,7 @@ export default function Home() {
           <Model scrollProgress={scrollProgress} />
           <CameraController scrollProgress={scrollProgress} />
           <Environment preset="city" />
-          <ContactShadows position={[0, -1.5, 0]} opacity={0.6} scale={10} blur={2} />
+          <ContactShadows position={[0, -0.5, 0]} opacity={0.6} scale={10} blur={2} />
         </Suspense>
       </Canvas>
     </main>
