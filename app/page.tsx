@@ -23,6 +23,10 @@ function Model({ scroll }: { scroll: number }) {
         const mesh = child as THREE.Mesh
         const name = mesh.name.toLowerCase()
 
+        if (name.includes('lid')) {
+          lidRef.current = mesh
+        }
+
         if (name.includes('capsule')) {
           mesh.material = new THREE.MeshPhysicalMaterial({
             transmission: 1,
@@ -42,10 +46,6 @@ function Model({ scroll }: { scroll: number }) {
             emissiveIntensity: 2.5,
           })
         }
-
-        if (name.includes('lid')) {
-          lidRef.current = mesh
-        }
       }
     })
   }, [scene])
@@ -59,20 +59,20 @@ function Model({ scroll }: { scroll: number }) {
   useFrame(() => {
     // 🔄 вращение модели
     if (modelRef.current) {
-      modelRef.current.rotation.y += 0.005
+      modelRef.current.rotation.y += 0.004
     }
 
-    // 🟡 КРЫШКА ОТ СКРОЛЛА (ВАЖНОЕ ИЗМЕНЕНИЕ)
+    // 🚀 ВЫСОКОЕ ПЛАВНОЕ ОТКРЫТИЕ
     if (lidRef.current) {
-      const openDistance = 4 // 👈 УВЕЛИЧИЛИ ДИАПАЗОН
+      const maxLift = 6 // 👈 ВОТ ЭТО ДЕЛАЕТ "ВЫСОКО ПОДНИМАЕТСЯ"
 
       const targetY =
-        lidStartY.current + scroll * openDistance
+        lidStartY.current + scroll * maxLift
 
       lidRef.current.position.y = THREE.MathUtils.lerp(
         lidRef.current.position.y,
         targetY,
-        0.15
+        0.08 // 👈 меньше = более плавно
       )
     }
   })
@@ -92,12 +92,12 @@ export default function Home() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const max =
+      const maxScroll =
         document.body.scrollHeight - window.innerHeight
 
-      const progress = window.scrollY / max
+      const progress = window.scrollY / maxScroll
 
-      // 🔥 НОРМАЛИЗАЦИЯ 0 → 1
+      // 🧠 стабилизация 0 → 1
       setScroll(Math.min(1, Math.max(0, progress)))
     }
 
@@ -107,7 +107,7 @@ export default function Home() {
 
   return (
     <main className="h-[200vh] w-full bg-black">
-      <Canvas camera={{ position: [0, 0, 7], fov: 35 }} dpr={[1, 2]}>
+      <Canvas camera={{ position: [0, 0, 7], fov: 35 }}>
         <color attach="background" args={['#050505']} />
 
         <ambientLight intensity={0.5} />
