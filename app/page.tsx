@@ -1,6 +1,6 @@
 'use client'
 
-import React, { Suspense, useMemo, useRef, useState, useEffect } from 'react'
+import React, { Suspense, useMemo, useRef, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import {
   OrbitControls,
@@ -12,10 +12,10 @@ import * as THREE from 'three'
 
 function Model({ scroll }: { scroll: number }) {
   const { scene } = useGLTF('/model.glb')
-  const lidRef = useRef<THREE.Mesh>(null!)
-  const modelRef = useRef<THREE.Group>(null!)
 
-  const lidStartY = useRef(0) // 🧠 сохраняем стартовую позицию крышки
+  const modelRef = useRef<THREE.Group>(null!)
+  const lidRef = useRef<THREE.Object3D | null>(null)
+  const lidStartY = useRef(0)
 
   useMemo(() => {
     scene.traverse((child) => {
@@ -31,7 +31,6 @@ function Model({ scroll }: { scroll: number }) {
             ior: 1.5,
             clearcoat: 1,
             transparent: true,
-            opacity: 1,
             color: '#474660',
           })
         }
@@ -45,27 +44,36 @@ function Model({ scroll }: { scroll: number }) {
           })
         }
 
+        // 🟡 крышка
         if (name.includes('lid')) {
           lidRef.current = mesh
-          lidStartY.current = mesh.position.y // 💡 фиксируем старт
         }
       }
     })
   }, [scene])
 
-  useFrame(() => {
+  // фиксируем стартовую позицию ПОСЛЕ монтирования
+  useEffect(() => {
+    if (lidRef.current) {
+      lidStartY.current = lidRef.current.position.y
+    }
+  }, [])
+
+  useFrame((state) => {
     if (modelRef.current) {
       modelRef.current.rotation.y += 0.005
     }
 
-    // 🔥 ВАЖНО: движение ОТ стартовой позиции
     if (lidRef.current) {
-      const openOffset = 2 // насколько открывается
+      const openDistance = 2
+
+      const targetY =
+        lidStartY.current + scroll * openDistance
 
       lidRef.current.position.y = THREE.MathUtils.lerp(
-        lidStartY.current,
-        lidStartY.current + openOffset,
-        scroll
+        lidRef.current.position.y,
+        targetY,
+        0.1
       )
     }
   })
@@ -77,5 +85,46 @@ function Model({ scroll }: { scroll: number }) {
       scale={2}
       position={[0, 1, 0]}
     />
+  )
+}
+
+export default function Home() {
+  const scrollRef = useRef(0)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const max =
+        document.body.scrollHeight - window.innerHeight
+
+      scrollRef.current = window.scrollY / max
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  return (
+    <main className="h-[200vh] w-full bg-black">
+      <Canvas camera={{ position: [0, 0, 7], fov: 35 }} dpr={[1, 2]}>
+        <color attach="background" args={['#050505']} />
+
+        <ambientLight intensity={0.5} />
+        <pointLight position={[10, 10, 10]} intensity={2} />
+        <spotLight position={[-10, 10, 10]} intensity={3} />
+
+        <Suspense fallback={null}>
+          <Model scroll={scrollRef.current} />
+          <Environment preset="city" />
+          <ContactShadows
+            position={[0, -1.5, 0]}
+            opacity={0.6}
+            scale={10}
+            blur={2}
+          />
+        </Suspense>
+
+        <OrbitControls makeDefault />
+      </Canvas>
+    </main>
   )
 }
