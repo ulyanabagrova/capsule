@@ -130,14 +130,6 @@ export default function Home() {
         </Canvas>
       </div>
 
-      {/* Создаем высоту страницы для скролла */}
-      <div className="h-[300vh] w-full pointer-events-none">
-        <section className="h-screen flex items-center justify-center">
-          <h1 className="text-white text-4xl font-light tracking-widest uppercase opacity-20">
-            Scroll to open Genemi
-          </h1>
-        </section>
-      </div>
     </main>
   )
 }
