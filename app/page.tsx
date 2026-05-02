@@ -1,68 +1,106 @@
 'use client'
-import React, { Suspense, useMemo } from 'react'
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, useGLTF, Environment, ContactShadows, MeshTransmissionMaterial } from '@react-three/drei'
+import React, { Suspense, useRef, useEffect, useState } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { useGLTF, Environment, ContactShadows } from '@react-three/drei'
 import * as THREE from 'three'
 
-function Model() {
+function Model({ scrollProgress }: { scrollProgress: number }) {
   const { scene } = useGLTF('/model.glb')
+  const lidRef = useRef<THREE.Object3D | null>(null)
 
-  useMemo(() => {
+  // Найти Lid один раз
+  useEffect(() => {
     scene.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh
-        const name = mesh.name.toLowerCase()
-        
-        // Логируем, чтобы точно видеть, что нашел код
-        console.log("Checking mesh:", mesh.name)
-
-        // СТЕКЛО (ищем 'capsule')
-        if (name.includes('capsule')) {
-          mesh.material = new THREE.MeshPhysicalMaterial({
-            transmission: 1,
-            thickness: 2,
-            roughness: 0.1,
-            ior: 1.5,
-            clearcoat: 1,
-            transparent: true,
-            opacity: 1, // При transmission 1 opacity работает иначе, оставляем так
-            color: '#474660',
-          })
-        }
-
-        // ЖИДКОСТЬ (ищем 'liquid')
-        if (name.includes('liquid')) {
-          mesh.material = new THREE.MeshStandardMaterial({
-            color: "#ff7b00",
-            emissive: "#ff3c00",
-            emissiveIntensity: 2.5,
-            roughness: 0.1,
-          })
-        }
+      if (child.name.toLowerCase().includes('lid')) {
+        lidRef.current = child
       }
     })
   }, [scene])
 
+  // Анимация
+  useFrame((state, delta) => {
+    // Вращение всей модели (медленное, премиум-эффект)
+    scene.rotation.y += delta * 0.3
+
+    // Поднятие крышки (через scroll)
+    if (lidRef.current) {
+      const targetY = scrollProgress * 1.5 // насколько вверх
+      lidRef.current.position.y = THREE.MathUtils.lerp(
+        lidRef.current.position.y,
+        targetY,
+        0.1
+      )
+    }
+  })
+
   return <primitive object={scene} scale={2} position={[0, -1, 0]} />
 }
 
+function CameraController({ scrollProgress }: { scrollProgress: number }) {
+  useFrame((state) => {
+    const t = state.clock.getElapsedTime()
+
+    const radius = 7
+    const speed = 0.3
+
+    // Камера крутится + реагирует на scroll
+    const angle = t * speed + scrollProgress * Math.PI
+
+    state.camera.position.x = Math.sin(angle) * radius
+    state.camera.position.z = Math.cos(angle) * radius
+    state.camera.position.y = 2
+
+    state.camera.lookAt(0, 0, 0)
+  })
+
+  return null
+}
+
 export default function Home() {
+  const [scrollProgress, setScrollProgress] = useState(0)
+
+  useEffect(() => {
+    let timeout: NodeJS.Timeout
+
+    // авто-анимация через 5 сек
+    timeout = setTimeout(() => {
+      setScrollProgress(1)
+    }, 5000)
+
+    const handleScroll = () => {
+      const scrollTop = window.scrollY
+      const height = document.body.scrollHeight - window.innerHeight
+      const progress = scrollTop / height
+
+      setScrollProgress(progress)
+    }
+
+    // mobile + desktop
+    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('touchmove', handleScroll)
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('touchmove', handleScroll)
+      clearTimeout(timeout)
+    }
+  }, [])
+
   return (
-    <main className="h-screen w-full bg-black">
+    <main className="h-[200vh] w-full bg-black">
       <Canvas camera={{ position: [0, 0, 7], fov: 35 }} dpr={[1, 2]}>
         <color attach="background" args={['#050505']} />
-        
+
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={2} />
         <spotLight position={[-10, 10, 10]} angle={0.2} intensity={3} penumbra={1} />
 
         <Suspense fallback={null}>
-          <Model />
+          <Model scrollProgress={scrollProgress} />
+          <CameraController scrollProgress={scrollProgress} />
           <Environment preset="city" />
           <ContactShadows position={[0, -1.5, 0]} opacity={0.6} scale={10} blur={2} />
         </Suspense>
-
-        <OrbitControls makeDefault />
       </Canvas>
     </main>
   )
