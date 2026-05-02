@@ -7,28 +7,34 @@ import * as THREE from 'three'
 function Model({ scrollProgress }: { scrollProgress: number }) {
   const { scene } = useGLTF('/model.glb')
   const lidRef = useRef<THREE.Object3D | null>(null)
+  const initialY = useRef<number>(0)
 
   useEffect(() => {
     scene.traverse((child) => {
       if (child.name.toLowerCase().includes('lid')) {
         lidRef.current = child
+        initialY.current = child.position.y // ✅ сохраняем стартовую позицию
       }
     })
   }, [scene])
 
   useFrame(() => {
     if (lidRef.current) {
-      const targetY = scrollProgress * 2
+      // ✅ 2 см = 0.02 (если сцена в метрах)
+      const lift = scrollProgress * 0.02
+
+      // ✅ всегда считаем от ИСХОДНОЙ позиции
+      const targetY = initialY.current + lift
+
       lidRef.current.position.y = THREE.MathUtils.lerp(
         lidRef.current.position.y,
         targetY,
-        0.08
+        0.15
       )
     }
   })
 
-  // ⬆️ ВАЖНО: поднимаем модель вверх
-  return <primitive object={scene} scale={2} position={[0, 1.2, 0]} />
+  return <primitive object={scene} scale={2} position={[0, 1.5, 0]} />
 }
 
 function CameraController({ scrollProgress }: { scrollProgress: number }) {
@@ -38,10 +44,9 @@ function CameraController({ scrollProgress }: { scrollProgress: number }) {
 
     state.camera.position.x = Math.sin(angle) * radius
     state.camera.position.z = Math.cos(angle) * radius
-    state.camera.position.y = 3
+    state.camera.position.y = 1.2
 
-    // ⬆️ Смотрим чуть выше центра
-    state.camera.lookAt(0, 1, 0)
+    state.camera.lookAt(0, 1.5, 0)
   })
 
   return null
@@ -70,7 +75,7 @@ export default function Home() {
 
   return (
     <main className="h-[200vh] w-full bg-black">
-      <Canvas camera={{ position: [0, 3, 10], fov: 40 }} dpr={[1, 2]}>
+      <Canvas camera={{ position: [0, 1.2, 10], fov: 40 }} dpr={[1, 2]}>
         <color attach="background" args={['#050505']} />
 
         <ambientLight intensity={0.5} />
