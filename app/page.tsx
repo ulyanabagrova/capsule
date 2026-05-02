@@ -33,7 +33,7 @@ function Model({ scrollProgress }: { scrollProgress: number }) {
   })
 
   // ⬆️ ПРОСТО поднимаем модель (без Box3)
-  return <primitive object={scene} scale={2} position={[0, 3, 0]} />
+  return <primitive object={scene} scale={1.5} position={[0, 4, 0]} />
 }
 
 function CameraController({ scrollProgress }: { scrollProgress: number }) {
@@ -48,7 +48,7 @@ function CameraController({ scrollProgress }: { scrollProgress: number }) {
     state.camera.position.y = 1.5
 
     // ⬆️ смотрим туда, где реально модель
-    state.camera.lookAt(0, 3, 0)
+    state.camera.lookAt(0, 4, 0)
   })
 
   return null
