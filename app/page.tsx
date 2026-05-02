@@ -7,17 +7,10 @@ import * as THREE from 'three'
 function Model({ scrollProgress }: { scrollProgress: number }) {
   const { scene } = useGLTF('/model.glb')
 
-  const groupRef = useRef<THREE.Group>(null)
   const lidRef = useRef<THREE.Object3D | null>(null)
   const initialY = useRef(0)
 
   useEffect(() => {
-    // ✅ центрируем модель
-    const box = new THREE.Box3().setFromObject(scene)
-    const center = box.getCenter(new THREE.Vector3())
-    scene.position.sub(center)
-
-    // ✅ ищем крышку
     scene.traverse((child) => {
       if (child.name.toLowerCase().includes('lid')) {
         lidRef.current = child
@@ -39,24 +32,22 @@ function Model({ scrollProgress }: { scrollProgress: number }) {
     }
   })
 
-  return (
-    <group ref={groupRef} position={[0, 2, 0]}>
-      {/* ⬆️ поднимаем ВСЮ модель */}
-      <primitive object={scene} scale={2.5} />
-    </group>
-  )
+  // ⬆️ ПРОСТО поднимаем модель (без Box3)
+  return <primitive object={scene} scale={2} position={[0, 2, 0]} />
 }
 
 function CameraController({ scrollProgress }: { scrollProgress: number }) {
   useFrame((state) => {
-    const radius = 12
+    const radius = 8
     const angle = scrollProgress * Math.PI * 2
 
-    // ✅ полноценное вращение вокруг объекта
     state.camera.position.x = Math.sin(angle) * radius
     state.camera.position.z = Math.cos(angle) * radius
-    state.camera.position.y = 2
 
+    // ⬇️ камера чуть ниже → модель видна сверху
+    state.camera.position.y = 1.5
+
+    // ⬆️ смотрим туда, где реально модель
     state.camera.lookAt(0, 2, 0)
   })
 
@@ -67,29 +58,24 @@ export default function Home() {
   const [scrollProgress, setScrollProgress] = useState(0)
 
   useEffect(() => {
-    const updateScroll = () => {
+    const handleScroll = () => {
       const scrollTop = window.scrollY
       const height = document.body.scrollHeight - window.innerHeight
-
       const progress = height > 0 ? scrollTop / height : 0
+
       setScrollProgress(progress)
     }
 
-    // ✅ работает везде
-    window.addEventListener('scroll', updateScroll)
-    window.addEventListener('wheel', updateScroll)
-    window.addEventListener('touchmove', updateScroll)
+    window.addEventListener('scroll', handleScroll)
 
     return () => {
-      window.removeEventListener('scroll', updateScroll)
-      window.removeEventListener('wheel', updateScroll)
-      window.removeEventListener('touchmove', updateScroll)
+      window.removeEventListener('scroll', handleScroll)
     }
   }, [])
 
   return (
-    <main className="h-[300vh] w-full bg-black">
-      <Canvas camera={{ position: [0, 2, 12], fov: 40 }} dpr={[1, 2]}>
+    <main className="h-[200vh] w-full bg-black">
+      <Canvas camera={{ position: [0, 1.5, 8], fov: 40 }} dpr={[1, 2]}>
         <color attach="background" args={['#050505']} />
 
         <ambientLight intensity={0.6} />
@@ -100,7 +86,7 @@ export default function Home() {
           <Model scrollProgress={scrollProgress} />
           <CameraController scrollProgress={scrollProgress} />
           <Environment preset="city" />
-          <ContactShadows position={[0, 0, 0]} opacity={0.5} scale={15} blur={2} />
+          <ContactShadows position={[0, 0, 0]} opacity={0.5} scale={10} blur={2} />
         </Suspense>
       </Canvas>
     </main>
