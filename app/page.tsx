@@ -1,6 +1,6 @@
 'use client'
 
-import React, { Suspense, useMemo, useRef } from 'react'
+import React, { Suspense, useMemo, useRef, useState, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import {
   OrbitControls,
@@ -10,9 +10,10 @@ import {
 } from '@react-three/drei'
 import * as THREE from 'three'
 
-function Model() {
+function Model({ scroll }: { scroll: number }) {
   const { scene } = useGLTF('/model.glb')
-  const ref = useRef<THREE.Group>(null!)
+  const lidRef = useRef<THREE.Mesh>(null!)
+  const modelRef = useRef<THREE.Group>(null!)
 
   useMemo(() => {
     scene.traverse((child) => {
@@ -22,7 +23,7 @@ function Model() {
 
         console.log('Checking mesh:', mesh.name)
 
-        // 🫧 СТЕКЛО (capsule)
+        // 🫧 СТЕКЛО
         if (name.includes('capsule')) {
           mesh.material = new THREE.MeshPhysicalMaterial({
             transmission: 1,
@@ -36,7 +37,7 @@ function Model() {
           })
         }
 
-        // 🔥 ЖИДКОСТЬ (liquid)
+        // 🔥 ЖИДКОСТЬ
         if (name.includes('liquid')) {
           mesh.material = new THREE.MeshStandardMaterial({
             color: '#ff7b00',
@@ -45,22 +46,34 @@ function Model() {
             roughness: 0.1,
           })
         }
+
+        // 🟡 LID (крышка)
+        if (name.includes('lid')) {
+          lidRef.current = mesh
+        }
       }
     })
   }, [scene])
 
-  // 🔄 ВРАЩЕНИЕ НА МЕСТЕ
-  useFrame((state) => {
-    if (!ref.current) return
+  // 🔄 вращение всей модели
+  useFrame(() => {
+    if (modelRef.current) {
+      modelRef.current.rotation.y += 0.005
+    }
 
-    ref.current.rotation.y += 0.01 // скорость вращения
-    // можно добавить чуть живости:
-    ref.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.5) * 0.05
+    // 📦 движение крышки по скроллу
+    if (lidRef.current) {
+      lidRef.current.position.y = THREE.MathUtils.lerp(
+        0,
+        2, // насколько поднимается крышка
+        scroll
+      )
+    }
   })
 
   return (
     <primitive
-      ref={ref}
+      ref={modelRef}
       object={scene}
       scale={2}
       position={[0, -1, 0]}
@@ -69,8 +82,24 @@ function Model() {
 }
 
 export default function Home() {
+  const [scroll, setScroll] = useState(0)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const maxScroll =
+        document.body.scrollHeight - window.innerHeight
+
+      const progress = window.scrollY / maxScroll
+
+      setScroll(Math.min(1, Math.max(0, progress)))
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
   return (
-    <main className="h-screen w-full bg-black">
+    <main className="h-[200vh] w-full bg-black">
       <Canvas camera={{ position: [0, 0, 7], fov: 35 }} dpr={[1, 2]}>
         <color attach="background" args={['#050505']} />
 
@@ -84,7 +113,7 @@ export default function Home() {
         />
 
         <Suspense fallback={null}>
-          <Model />
+          <Model scroll={scroll} />
           <Environment preset="city" />
           <ContactShadows
             position={[0, -1.5, 0]}
