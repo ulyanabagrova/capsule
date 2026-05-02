@@ -8,7 +8,7 @@ function Model({ scrollProgress }: { scrollProgress: number }) {
   const { scene } = useGLTF('/model.glb')
   const lidRef = useRef<THREE.Object3D | null>(null)
 
-  // Найти Lid один раз
+  // ищем Lid
   useEffect(() => {
     scene.traverse((child) => {
       if (child.name.toLowerCase().includes('lid')) {
@@ -17,18 +17,14 @@ function Model({ scrollProgress }: { scrollProgress: number }) {
     })
   }, [scene])
 
-  // Анимация
-  useFrame((state, delta) => {
-    // Вращение всей модели (медленное, премиум-эффект)
-    scene.rotation.y += delta * 0.3
-
-    // Поднятие крышки (через scroll)
+  useFrame(() => {
+    // Поднятие крышки ТОЛЬКО от скролла
     if (lidRef.current) {
-      const targetY = scrollProgress * 1.5 // насколько вверх
+      const targetY = scrollProgress * 2 // регулируй высоту
       lidRef.current.position.y = THREE.MathUtils.lerp(
         lidRef.current.position.y,
         targetY,
-        0.1
+        0.08
       )
     }
   })
@@ -38,17 +34,14 @@ function Model({ scrollProgress }: { scrollProgress: number }) {
 
 function CameraController({ scrollProgress }: { scrollProgress: number }) {
   useFrame((state) => {
-    const t = state.clock.getElapsedTime()
-
-    const radius = 7
-    const speed = 0.3
-
-    // Камера крутится + реагирует на scroll
-    const angle = t * speed + scrollProgress * Math.PI
+    const radius = 10 // ДАЛЬШЕ от объекта (было 7)
+    
+    // Камера вращается от скролла
+    const angle = scrollProgress * Math.PI * 2
 
     state.camera.position.x = Math.sin(angle) * radius
     state.camera.position.z = Math.cos(angle) * radius
-    state.camera.position.y = 2
+    state.camera.position.y = 2.5
 
     state.camera.lookAt(0, 0, 0)
   })
@@ -60,35 +53,26 @@ export default function Home() {
   const [scrollProgress, setScrollProgress] = useState(0)
 
   useEffect(() => {
-    let timeout: NodeJS.Timeout
-
-    // авто-анимация через 5 сек
-    timeout = setTimeout(() => {
-      setScrollProgress(1)
-    }, 5000)
-
     const handleScroll = () => {
       const scrollTop = window.scrollY
       const height = document.body.scrollHeight - window.innerHeight
-      const progress = scrollTop / height
 
+      const progress = height > 0 ? scrollTop / height : 0
       setScrollProgress(progress)
     }
 
-    // mobile + desktop
     window.addEventListener('scroll', handleScroll)
     window.addEventListener('touchmove', handleScroll)
 
     return () => {
       window.removeEventListener('scroll', handleScroll)
       window.removeEventListener('touchmove', handleScroll)
-      clearTimeout(timeout)
     }
   }, [])
 
   return (
     <main className="h-[200vh] w-full bg-black">
-      <Canvas camera={{ position: [0, 0, 7], fov: 35 }} dpr={[1, 2]}>
+      <Canvas camera={{ position: [0, 2, 10], fov: 40 }} dpr={[1, 2]}>
         <color attach="background" args={['#050505']} />
 
         <ambientLight intensity={0.5} />
