@@ -1,22 +1,28 @@
 'use client'
-import React, { Suspense, useMemo } from 'react'
-import { Canvas } from '@react-three/fiber'
-import { OrbitControls, useGLTF, Environment, ContactShadows, MeshTransmissionMaterial } from '@react-three/drei'
+
+import React, { Suspense, useMemo, useRef } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import {
+  OrbitControls,
+  useGLTF,
+  Environment,
+  ContactShadows,
+} from '@react-three/drei'
 import * as THREE from 'three'
 
 function Model() {
   const { scene } = useGLTF('/model.glb')
+  const ref = useRef<THREE.Group>(null!)
 
   useMemo(() => {
     scene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh
         const name = mesh.name.toLowerCase()
-        
-        // Логируем, чтобы точно видеть, что нашел код
-        console.log("Checking mesh:", mesh.name)
 
-        // СТЕКЛО (ищем 'capsule')
+        console.log('Checking mesh:', mesh.name)
+
+        // 🫧 СТЕКЛО (capsule)
         if (name.includes('capsule')) {
           mesh.material = new THREE.MeshPhysicalMaterial({
             transmission: 1,
@@ -25,16 +31,16 @@ function Model() {
             ior: 1.5,
             clearcoat: 1,
             transparent: true,
-            opacity: 1, // При transmission 1 opacity работает иначе, оставляем так
+            opacity: 1,
             color: '#474660',
           })
         }
 
-        // ЖИДКОСТЬ (ищем 'liquid')
+        // 🔥 ЖИДКОСТЬ (liquid)
         if (name.includes('liquid')) {
           mesh.material = new THREE.MeshStandardMaterial({
-            color: "#ff7b00",
-            emissive: "#ff3c00",
+            color: '#ff7b00',
+            emissive: '#ff3c00',
             emissiveIntensity: 2.5,
             roughness: 0.1,
           })
@@ -43,7 +49,25 @@ function Model() {
     })
   }, [scene])
 
-  return <primitive object={scene} scale={2} position={[0, -1, 0]} />
+  // 🌊 АНИМАЦИЯ (floating motion)
+  useFrame((state) => {
+    if (!ref.current) return
+
+    const t = state.clock.elapsedTime
+
+    ref.current.position.y = -1 + Math.sin(t) * 0.3
+    ref.current.position.x = Math.cos(t * 0.5) * 0.2
+    ref.current.rotation.y = Math.sin(t * 0.3) * 0.2
+  })
+
+  return (
+    <primitive
+      ref={ref}
+      object={scene}
+      scale={2}
+      position={[0, -1, 0]}
+    />
+  )
 }
 
 export default function Home() {
@@ -51,15 +75,26 @@ export default function Home() {
     <main className="h-screen w-full bg-black">
       <Canvas camera={{ position: [0, 0, 7], fov: 35 }} dpr={[1, 2]}>
         <color attach="background" args={['#050505']} />
-        
+
+        {/* 💡 LIGHTS */}
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={2} />
-        <spotLight position={[-10, 10, 10]} angle={0.2} intensity={3} penumbra={1} />
+        <spotLight
+          position={[-10, 10, 10]}
+          angle={0.2}
+          intensity={3}
+          penumbra={1}
+        />
 
         <Suspense fallback={null}>
           <Model />
           <Environment preset="city" />
-          <ContactShadows position={[0, -1.5, 0]} opacity={0.6} scale={10} blur={2} />
+          <ContactShadows
+            position={[0, -1.5, 0]}
+            opacity={0.6}
+            scale={10}
+            blur={2}
+          />
         </Suspense>
 
         <OrbitControls makeDefault />
