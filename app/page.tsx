@@ -49,15 +49,13 @@ function Model() {
     })
   }, [scene])
 
-  // 🌊 АНИМАЦИЯ (floating motion)
+  // 🔄 ВРАЩЕНИЕ НА МЕСТЕ
   useFrame((state) => {
     if (!ref.current) return
 
-    const t = state.clock.elapsedTime
-
-    ref.current.position.y = -1 + Math.sin(t) * 0.3
-    ref.current.position.x = Math.cos(t * 0.5) * 0.2
-    ref.current.rotation.y = Math.sin(t * 0.3) * 0.2
+    ref.current.rotation.y += 0.01 // скорость вращения
+    // можно добавить чуть живости:
+    ref.current.rotation.x = Math.sin(state.clock.elapsedTime * 0.5) * 0.05
   })
 
   return (
@@ -76,7 +74,6 @@ export default function Home() {
       <Canvas camera={{ position: [0, 0, 7], fov: 35 }} dpr={[1, 2]}>
         <color attach="background" args={['#050505']} />
 
-        {/* 💡 LIGHTS */}
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={2} />
         <spotLight
