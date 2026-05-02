@@ -76,7 +76,7 @@ function Model({ scroll }: { scroll: number }) {
       ref={modelRef}
       object={scene}
       scale={2}
-      position={[0, -1, 0]}
+      position={[0, 0, 0]}
     />
   )
 }
