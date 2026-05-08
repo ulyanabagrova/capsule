@@ -1,136 +1,138 @@
 'use client'
 
-import React, { Suspense, useRef, useEffect, useMemo } from 'react'
-import { Canvas, useFrame, useGraph } from '@react-three/fiber'
+import React, { Suspense, useMemo, useRef, useEffect, useState } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
 import {
+  OrbitControls,
   useGLTF,
   Environment,
   ContactShadows,
-  OrbitControls,
 } from '@react-three/drei'
 import * as THREE from 'three'
 
 function Model({ scroll }: { scroll: number }) {
-  // Загружаем модель
   const { scene } = useGLTF('/model.glb')
-  // useGraph создает удобный словарь объектов по именам
-  const { nodes } = useGraph(scene)
-  
+
   const modelRef = useRef<THREE.Group>(null!)
   const lidRef = useRef<THREE.Object3D | null>(null)
-  
-  // Храним начальную позицию крышки, чтобы не "улетела" в космос
-  const initialY = useRef<number | null>(null)
+  const lidStartY = useRef(0)
 
-  // Настройка материалов и поиск крышки
   useMemo(() => {
-    Object.values(nodes).forEach((node) => {
-      if ((node as THREE.Mesh).isMesh) {
-        const mesh = node as THREE.Mesh
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh
         const name = mesh.name.toLowerCase()
 
-        // Находим крышку (lid)
         if (name.includes('lid')) {
           lidRef.current = mesh
-          if (initialY.current === null) {
-            initialY.current = mesh.position.y
-          }
         }
 
-        // Материал капсулы (High-end Noir Glass)
         if (name.includes('capsule')) {
           mesh.material = new THREE.MeshPhysicalMaterial({
             transmission: 1,
             thickness: 2,
-            roughness: 0.05,
+            roughness: 0.1,
             ior: 1.5,
             clearcoat: 1,
             transparent: true,
-            color: new THREE.Color('#474660'),
-            attenuationColor: new THREE.Color('#474660'),
-            attenuationDistance: 0.5,
+            color: '#474660',
           })
         }
 
-        // Материал жидкости
         if (name.includes('liquid')) {
           mesh.material = new THREE.MeshStandardMaterial({
             color: '#ff7b00',
             emissive: '#ff3c00',
-            emissiveIntensity: 3,
+            emissiveIntensity: 2.5,
           })
         }
       }
     })
-  }, [nodes])
+  }, [scene])
 
-  useFrame((state, delta) => {
-    // Вращение всей модели
+  useEffect(() => {
+    if (lidRef.current) {
+      lidStartY.current = lidRef.current.position.y
+    }
+  }, [])
+
+  useFrame(() => {
+    // 🔄 вращение модели
     if (modelRef.current) {
-      modelRef.current.rotation.y += 0.5 * delta // Более стабильное вращение через delta
+      modelRef.current.rotation.y += 0.004
     }
 
-    // Анимация поднятия крышки
-    if (lidRef.current && initialY.current !== null) {
-      const maxLift = 5 // На сколько единиц поднимается крышка
-      const targetY = initialY.current + (scroll * maxLift)
+    // 🚀 ВЫСОКОЕ ПЛАВНОЕ ОТКРЫТИЕ
+    if (lidRef.current) {
+      const maxLift = 6 // 👈 ВОТ ЭТО ДЕЛАЕТ "ВЫСОКО ПОДНИМАЕТСЯ"
 
-      // Плавный переход (lerp)
+      const targetY =
+        lidStartY.current + scroll * maxLift
+
       lidRef.current.position.y = THREE.MathUtils.lerp(
         lidRef.current.position.y,
         targetY,
-        0.1
+        0.08 // 👈 меньше = более плавно
       )
     }
   })
 
-  return <primitive ref={modelRef} object={scene} scale={2.5} position={[0, -1, 0]} />
+  return (
+    <primitive
+      ref={modelRef}
+      object={scene}
+      scale={2}
+      position={[0, 1, 0]}
+    />
+  )
 }
 
 export default function Home() {
-  const [scroll, setScroll] = React.useState(0)
+  const [scroll, setScroll] = useState(0)
 
   useEffect(() => {
     const handleScroll = () => {
-      // Вычисляем процент прокрутки от 0 до 1
-      const height = document.documentElement.scrollHeight - window.innerHeight
-      const scrolled = window.scrollY
-      const progress = THREE.MathUtils.clamp(scrolled / height, 0, 1)
-      setScroll(progress)
+      const maxScroll =
+        document.body.scrollHeight - window.innerHeight
+
+      const progress = window.scrollY / maxScroll
+
+      // 🧠 стабилизация 0 → 1
+      setScroll(Math.min(1, Math.max(0, progress)))
     }
 
-    window.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   return (
-    <main className="relative w-full bg-[#050505]">
-      {/* Контейнер для Canvas фиксируем, чтобы модель была видна при скролле */}
-      <div className="fixed inset-0 h-screen w-full">
-        <Canvas camera={{ position: [0, 2, 12], fov: 35 }}>
-          <color attach="background" args={['#050505']} />
-          
-          <ambientLight intensity={0.2} />
-          <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} intensity={2} />
-          <pointLight position={[-10, -10, -10]} intensity={1} color="#474660" />
+    <main className="h-[200vh] w-full bg-black">
+      <Canvas camera={{ position: [0, 0, 7], fov: 35 }}>
+        <color attach="background" args={['#050505']} />
 
-          <Suspense fallback={null}>
-            <Model scroll={scroll} />
-            <Environment preset="city" />
-            <ContactShadows 
-              position={[0, -2, 0]} 
-              opacity={0.4} 
-              scale={20} 
-              blur={2.5} 
-              far={4} 
-            />
-          </Suspense>
+        <ambientLight intensity={0.5} />
+        <pointLight position={[10, 10, 10]} intensity={2} />
+        <spotLight position={[-10, 10, 10]} intensity={3} />
 
-          <OrbitControls enableZoom={false} enablePan={false} makeDefault />
-        </Canvas>
-      </div>
+        <Suspense fallback={null}>
+          <Model scroll={scroll} />
 
-  
+          <Environment preset="city" />
+
+          <ContactShadows
+            position={[0, -1.5, 0]}
+            opacity={0.6}
+            scale={10}
+            blur={2}
+          />
+        </Suspense>
+
+        <OrbitControls
+          enableZoom={false}
+          enablePan={false}
+          enableRotate={false}
+        />
+      </Canvas>
     </main>
   )
 }
